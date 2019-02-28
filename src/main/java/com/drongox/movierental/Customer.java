@@ -1,7 +1,7 @@
 package com.drongox.movierental;
 
-import java.util.Enumeration;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
 public class Customer {
 
@@ -13,51 +13,44 @@ public class Customer {
     }
 
     public String statement() {
-        double totalAmount = 0;
-        int totalFrequentPoints = 0;
-        String result = "Rental Record for " + name() + "\n";
-        for (Rental rental : _rentals) {
-            totalAmount += getRentalAmount(rental);
 
-            totalFrequentPoints += computeFrequentRenterPoints(rental);
+        return String.join("" ,
+                buildHeader(),
+                buildRentalDetails(),
+                buildFooter()
+                );
 
-            result += "\t" + rental.tape().movie().name() + "\t" + getRentalAmount(rental) + "\n";
+    }
 
-        }
-
-        result += "Amount owed is " + totalAmount + "\n";
-        result += "You earned " + totalFrequentPoints + " frequent renter points";
+    private String buildFooter() {
+        String result = "Amount owed is " + computeTotalAmount() + "\n";
+        result += "You earned " + computeTotalFrequentPoints() + " frequent renter points";
         return result;
+    }
+
+    private String buildRentalDetails() {
+        return _rentals.stream()
+                .map(rental -> "\t" + rental.tape().movie().name() + "\t" + rental.computeAmount() + "\n")
+                .collect(Collectors.joining());
+    }
+
+    private String buildHeader() {
+        return "Rental Record for " + name() + "\n";
+    }
+
+    private int computeTotalFrequentPoints() {
+        return _rentals.stream()
+                        .mapToInt(Rental::computeFrequentRenterPoints)
+                        .sum();
+    }
+
+    private double computeTotalAmount() {
+        return _rentals.stream()
+                .mapToDouble(Rental::computeAmount)
+                .sum();
 
     }
 
-    private int computeFrequentRenterPoints(Rental rental) {
-        int frequentRenterPoints = 0;
-        frequentRenterPoints++;
-        if ((rental.tape().movie().priceCode() == Movie.NEW_RELEASE) && rental.daysRented() > 1) frequentRenterPoints++;
-        return frequentRenterPoints;
-    }
-
-    private double getRentalAmount(Rental rental) {
-        double rentalAmount = 0;
-        switch (rental.tape().movie().priceCode()) {
-            case Movie.REGULAR:
-                rentalAmount += 2;
-                if (rental.daysRented() > 2)
-                    rentalAmount += (rental.daysRented() - 2) * 1.5;
-                break;
-            case Movie.NEW_RELEASE:
-                rentalAmount += rental.daysRented() * 3;
-                break;
-            case Movie.CHILDRENS:
-                rentalAmount += 1.5;
-                if (rental.daysRented() > 3)
-                    rentalAmount += (rental.daysRented() - 3) * 1.5;
-                break;
-
-        }
-        return rentalAmount;
-    }
 
     private String name() {
         return _name;
@@ -97,6 +90,35 @@ public class Customer {
         public Rental(Tape tape, int daysRented) {
             _tape = tape;
             _daysRented = daysRented;
+
+        }
+
+        private int computeFrequentRenterPoints() {
+            int frequentRenterPoints = 0;
+            frequentRenterPoints++;
+            if ((tape().movie().priceCode() == Movie.NEW_RELEASE) && daysRented() > 1) frequentRenterPoints++;
+            return frequentRenterPoints;
+        }
+
+        private double computeAmount() {
+            double rentalAmount = 0;
+            switch (tape().movie().priceCode()) {
+                case Movie.REGULAR:
+                    rentalAmount += 2;
+                    if (daysRented() > 2)
+                        rentalAmount += (daysRented() - 2) * 1.5;
+                    break;
+                case Movie.NEW_RELEASE:
+                    rentalAmount += daysRented() * 3;
+                    break;
+                case Movie.CHILDRENS:
+                    rentalAmount += 1.5;
+                    if (daysRented() > 3)
+                        rentalAmount += (daysRented() - 3) * 1.5;
+                    break;
+
+            }
+            return rentalAmount;
         }
 
         public int daysRented() {
