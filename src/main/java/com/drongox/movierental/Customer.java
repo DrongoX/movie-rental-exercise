@@ -52,11 +52,7 @@ public class Customer {
         }
 
         public int computeFrequentRenterPoints() {
-            if (tape().movie().isNewRelease() && daysRented() > 1) {
-                return 2;
-            }
-
-            return 1;
+            return tape().movie().getMovieType().computeFrequentRenterPoints(daysRented());
         }
 
     }
@@ -68,24 +64,30 @@ public class Customer {
                     if (daysRented > 3)
                         return 1.5 + (daysRented - 3) * 1.5;
                     return 1.5;
-                }),
+                },
+                daysRented -> 1),
 
         REGULAR(0,
                 daysRented -> {
                     if (daysRented > 2)
                         return 2 + (daysRented - 2) * 1.5;
                     return 2;
-                }),
+                },
+                daysRented -> 1),
 
         NEW_RELEASE(1,
-                daysRented -> daysRented * 3);
+                daysRented -> daysRented * 3,
+                daysRented -> daysRented > 1 ? 2 : 1);
+
 
         private final int priceCode;
-        private AmountCalculator amountCalculator;
+        private final AmountCalculator amountCalculator;
+        private final FrequentRenterPointsCalculator frequentRenterPointsCalculator;
 
-        MovieType(int priceCode, AmountCalculator amountCalculator) {
+        MovieType(int priceCode, AmountCalculator amountCalculator, FrequentRenterPointsCalculator frequentRenterPointsCalculator) {
             this.priceCode = priceCode;
             this.amountCalculator = amountCalculator;
+            this.frequentRenterPointsCalculator = frequentRenterPointsCalculator;
         }
 
         public static MovieType of(int priceCode) {
@@ -99,27 +101,17 @@ public class Customer {
             return amountCalculator.compute(daysRented);
         }
 
+        public int computeFrequentRenterPoints(int daysRented) {
+            return frequentRenterPointsCalculator.compute(daysRented);
+        }
+
         private interface AmountCalculator {
             double compute(int daysRented);
         }
 
-        /*
-            switch (priceCode()) {
-                case Movie.REGULAR:
-                    thisAmount += 2;
-                    if (daysRented > 2)
-                        thisAmount += (daysRented - 2) * 1.5;
-                    break;
-                case Movie.NEW_RELEASE:
-                    thisAmount += daysRented * 3;
-                    break;
-                case Movie.CHILDRENS:
-                    thisAmount += 1.5;
-                    if (daysRented > 3)
-                        thisAmount += (daysRented - 3) * 1.5;
-                    break;
-
-            }*/
+        private interface FrequentRenterPointsCalculator {
+            int compute(int daysRented);
+        }
     }
 
     public static class Movie {
