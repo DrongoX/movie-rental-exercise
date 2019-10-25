@@ -1,6 +1,8 @@
 package com.drongox.movierental;
 
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Vector;
 
 public class Customer {
@@ -70,7 +72,8 @@ public class Customer {
 
 
   private String _name;
-  private Vector _rentals = new Vector();
+  private Vector<Rental> _rentals = new Vector<>();
+  private List<Rental> rentals = new ArrayList<>();
 
   public Customer(String name) {
     _name = name;
@@ -79,52 +82,69 @@ public class Customer {
   public String statement() {
     double totalAmount = 0;
     int frequentRenterPoints = 0;
-    Enumeration rentals = _rentals.elements();
-    String result = "Rental Record for " + name() + "\n";
+    Enumeration<Rental> rentals = _rentals.elements();
+    StringBuilder result = new StringBuilder("Rental Record for " + name() + "\n");
     while (rentals.hasMoreElements()) {
-      double thisAmount = 0;
-      Rental each = (Rental) rentals.nextElement();
+      Rental rental = rentals.nextElement();
 
-      //determine amounts for each line
-      switch (each.tape().movie().priceCode()) {
-        case Movie.REGULAR:
-          thisAmount += 2;
-          if (each.daysRented() > 2)
-            thisAmount += (each.daysRented() - 2) * 1.5;
-          break;
-        case Movie.NEW_RELEASE:
-          thisAmount += each.daysRented() * 3;
-          break;
-        case Movie.CHILDRENS:
-          thisAmount += 1.5;
-          if (each.daysRented() > 3)
-            thisAmount += (each.daysRented() - 3) * 1.5;
-          break;
+      double thisAmount = getAmountFor(rental);
 
-      }
       totalAmount += thisAmount;
 
-      // add frequent renter points
-      frequentRenterPoints++;
-      // add bonus for a two day new release rental
-      if ((each.tape().movie().priceCode() == Movie.NEW_RELEASE) && each.daysRented() > 1) frequentRenterPoints++;
+      frequentRenterPoints += getFrequentRenterPoints(rental);
 
       //show figures for this rental
-      result += "\t" + each.tape().movie().name() + "\t" + String.valueOf(thisAmount) + "\n";
+      result.append(getRentalAmountLine(thisAmount, rental));
 
     }
     //add footer lines
-    result += "Amount owed is " + String.valueOf(totalAmount) + "\n";
-    result += "You earned " + String.valueOf(frequentRenterPoints) + " frequent renter points";
-    return result;
+    result.append("Amount owed is ").append(String.valueOf(totalAmount)).append("\n");
+    result.append("You earned ").append(String.valueOf(frequentRenterPoints)).append(" frequent renter points");
+    return result.toString();
 
+  }
+
+  private int getFrequentRenterPoints(Rental rental) {
+    // add frequent renter points
+    int frequentRenterPoints = 1;
+    // add bonus for a two day new release rental
+    if ((rental.tape().movie().priceCode() == Movie.NEW_RELEASE) && rental.daysRented() > 1) frequentRenterPoints++;
+    return frequentRenterPoints;
+  }
+
+  private double getAmountFor(Rental each) {
+    double thisAmount = 0;
+
+    //determine amounts for each line
+    switch (each.tape().movie().priceCode()) {
+      case Movie.REGULAR:
+        thisAmount += 2;
+        if (each.daysRented() > 2)
+          thisAmount += (each.daysRented() - 2) * 1.5;
+        break;
+      case Movie.NEW_RELEASE:
+        thisAmount += each.daysRented() * 3;
+        break;
+      case Movie.CHILDRENS:
+        thisAmount += 1.5;
+        if (each.daysRented() > 3)
+          thisAmount += (each.daysRented() - 3) * 1.5;
+        break;
+
+    }
+    return thisAmount;
+  }
+
+  private String getRentalAmountLine(double thisAmount, Rental each) {
+    return "\t" + each.tape().movie().name() + "\t" + String.valueOf(thisAmount) + "\n";
   }
 
   private String name() {
     return _name;
   }
 
-  public void addRental(Rental arg) {
-    _rentals.addElement(arg);
+  public void addRental(Rental rental) {
+    rentals.add(rental);
+    _rentals.addElement(rental);
   }
 }
