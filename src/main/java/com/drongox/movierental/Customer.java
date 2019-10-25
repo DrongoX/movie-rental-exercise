@@ -1,9 +1,9 @@
 package com.drongox.movierental;
 
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
 public class Customer {
 
@@ -80,28 +80,46 @@ public class Customer {
   }
 
   public String statement() {
-    double totalAmount = 0;
-    int frequentRenterPoints = 0;
-    Enumeration<Rental> rentals = _rentals.elements();
-    StringBuilder result = new StringBuilder("Rental Record for " + name() + "\n");
-    while (rentals.hasMoreElements()) {
-      Rental rental = rentals.nextElement();
 
-      double thisAmount = getAmountFor(rental);
+    return generateHeaderLine() +
+            generateAmountLines() +
+            generateTotalAmountLine() +
+            generateTotalFrequentRentersPointsLine();
 
-      totalAmount += thisAmount;
+  }
 
-      frequentRenterPoints += getFrequentRenterPoints(rental);
+  private String generateTotalFrequentRentersPointsLine() {
+    return "You earned " + getTotalFrequentRenterPoints() + " frequent renter points";
+  }
 
-      //show figures for this rental
-      result.append(getRentalAmountLine(thisAmount, rental));
+  private String generateTotalAmountLine() {
+    return "Amount owed is " + getTotalAmount() + "\n";
+  }
 
-    }
-    //add footer lines
-    result.append("Amount owed is ").append(String.valueOf(totalAmount)).append("\n");
-    result.append("You earned ").append(String.valueOf(frequentRenterPoints)).append(" frequent renter points");
-    return result.toString();
+  private String generateAmountLines() {
+    return rentals.stream()
+            .map(this::generateAmountLine)
+            .collect(Collectors.joining());
+  }
 
+  private String generateAmountLine(Rental rental) {
+    return getRentalAmountLine(getAmountFor(rental), rental);
+  }
+
+  private String generateHeaderLine() {
+    return "Rental Record for " + name() + "\n";
+  }
+
+  private int getTotalFrequentRenterPoints() {
+    return rentals.stream()
+            .mapToInt(this::getFrequentRenterPoints)
+            .sum();
+  }
+
+  private double getTotalAmount() {
+    return rentals.stream()
+            .mapToDouble(this::getAmountFor)
+            .sum();
   }
 
   private int getFrequentRenterPoints(Rental rental) {
