@@ -47,7 +47,7 @@ class CustomerTest {
                                                  "You earned 1 frequent renter points");
   }
 
-@Test
+  @Test
   @DisplayName("Should return the owed amount and frequent renter points of rental for new release movie")
   void Should_return_owed_amount_and_frp_of_rental_for_new_release_movie() {
     Customer customer = new Customer("Ilya");
