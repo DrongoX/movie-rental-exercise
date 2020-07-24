@@ -1,4 +1,4 @@
-package com.drongox.movierental;
+package uk.zinch.movierental;
 
 import java.util.Enumeration;
 import java.util.Vector;
