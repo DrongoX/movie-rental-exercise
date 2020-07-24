@@ -63,6 +63,22 @@ class CustomerTest {
   }
 
   @Test
-  void addRental() {
+  @DisplayName("Should return the owed amount and frequent renter points of rental for two release movies")
+  void Should_return_owed_amount_and_frp_of_rental_for_two_release_movies() {
+    Customer customer = new Customer("Ilya");
+    Customer.Movie jokerMovie = new Customer.Movie("Joker", Customer.Movie.NEW_RELEASE);
+    Customer.Tape jokerTape = new Customer.Tape("serialNumber", jokerMovie);
+
+    Customer.Movie littlePonyMovie = new Customer.Movie("Petit Poney", Customer.Movie.NEW_RELEASE);
+    Customer.Tape littlePonyTape = new Customer.Tape("serialNumber", littlePonyMovie);
+    
+    customer.addRental(new Customer.Rental(jokerTape, 5));
+    customer.addRental(new Customer.Rental(littlePonyTape, 5));
+    String invoice = customer.statement();
+    Assertions.assertThat(invoice).isEqualTo("Rental Record for Ilya\n" +
+                                                 "\tJoker\t15.0\n" +
+                                                 "\tPetit Poney\t15.0\n" +
+                                                 "Amount owed is 30.0\n" +
+                                                 "You earned 4 frequent renter points");
   }
 }
