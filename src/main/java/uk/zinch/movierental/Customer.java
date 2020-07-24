@@ -3,6 +3,7 @@ package uk.zinch.movierental;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
 public class Customer {
 
@@ -112,24 +113,29 @@ public class Customer {
   }
 
   public String statement() {
-    double totalAmount = 0;
-    int frequentRenterPoints = 0;
-    String result = "Rental Record for " + name() + "\n";
-    
-    for (Rental rental : rentals) {
-      totalAmount += rental.computeAmount();
-      
-      frequentRenterPoints += rental.computeFrequentRenterPoints();
+    return buildCustomerInformations() + buildAllRentalDetails() + buildTotalInformations();
+  }
 
-      //show figures for this rental
-      result += "\t" + rental.tape().movie().name() + "\t" + rental.computeAmount() + "\n";
-    }
-    
-    //add footer lines
-    result += "Amount owed is " + totalAmount + "\n";
-    result += "You earned " + frequentRenterPoints + " frequent renter points";
+  private String buildTotalInformations() {
+     return "Amount owed is " + computeTotalAmount() + "\n" +
+     "You earned " + computeTotalFrequentRenterPoints() + " frequent renter points";
+  }
 
-    return result;
+  private String buildCustomerInformations() {
+    return "Rental Record for " + name() + "\n";
+  }
+
+  private String buildAllRentalDetails() {
+    return rentals.stream().map(rental-> "\t" + rental.tape().movie().name() + "\t" + rental.computeAmount() + "\n")
+            .collect(Collectors.joining());
+  }
+
+  private int computeTotalFrequentRenterPoints() {
+    return rentals.stream().mapToInt(Rental::computeFrequentRenterPoints).sum();
+  }
+
+  private double computeTotalAmount() {
+    return rentals.stream().mapToDouble(Rental::computeAmount).sum();
   }
 
   private String name() {
