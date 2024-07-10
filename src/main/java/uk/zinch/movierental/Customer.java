@@ -1,7 +1,8 @@
 package uk.zinch.movierental;
-
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Vector;
+import java.util.function.IntToDoubleFunction;
 
 public class Customer {
 
@@ -44,26 +45,7 @@ public class Customer {
     }
 
     private double calculateAmount(){
-      double thisAmount = 0;
-
-      //determine amounts for rental line
-      switch (tape().movie().priceCode()) {
-        case Movie.REGULAR:
-          thisAmount += 2;
-          if (daysRented() > 2)
-            thisAmount += (daysRented() - 2) * 1.5;
-          break;
-        case Movie.NEW_RELEASE:
-          thisAmount += daysRented() * 3;
-          break;
-        case Movie.CHILDRENS:
-          thisAmount += 1.5;
-          if (daysRented() > 3)
-            thisAmount += (daysRented() - 3) * 1.5;
-          break;
-      }
-
-      return thisAmount;
+      return Movie.Type.of(tape().movie().priceCode()).calculateAmount(daysRented());
     }
   }
 
@@ -72,6 +54,30 @@ public class Customer {
     public static final int  CHILDRENS = 2;
     public static final int  REGULAR = 0;
     public static final int  NEW_RELEASE = 1;
+
+    private enum Type {
+      REGULAR(Movie.REGULAR,  (days) -> days <= 2 ? 2 : 2 + (days - 2) * 1.5),
+      CHILDREN(Movie.CHILDRENS, (days) -> days <= 3 ? 1.5 : 1.5 + (days - 3) * 1.5),
+      NEW_RELEASE(Movie.NEW_RELEASE, (days) -> days * 3);
+
+      private final int legacyCode;
+      private final IntToDoubleFunction amountCalculator;
+
+      Type(int legacyCode, IntToDoubleFunction amountCalculator) {
+        this.legacyCode = legacyCode;
+        this.amountCalculator = amountCalculator;
+      }
+
+      public static Type of(int legacyCode) {
+        return Arrays.stream(values())
+                .filter(type -> type.legacyCode == legacyCode)
+                .findFirst().orElseThrow();
+      }
+
+      public double calculateAmount(int daysRented) {
+        return this.amountCalculator.applyAsDouble(daysRented);
+      }
+    }
 
     private int _priceCode;
     private String _name;
