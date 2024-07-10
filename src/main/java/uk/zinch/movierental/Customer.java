@@ -42,6 +42,29 @@ public class Customer {
     public Tape tape() {
       return _tape;
     }
+
+    private double calculateAmount(){
+      double thisAmount = 0;
+
+      //determine amounts for rental line
+      switch (tape().movie().priceCode()) {
+        case Movie.REGULAR:
+          thisAmount += 2;
+          if (daysRented() > 2)
+            thisAmount += (daysRented() - 2) * 1.5;
+          break;
+        case Movie.NEW_RELEASE:
+          thisAmount += daysRented() * 3;
+          break;
+        case Movie.CHILDRENS:
+          thisAmount += 1.5;
+          if (daysRented() > 3)
+            thisAmount += (daysRented() - 3) * 1.5;
+          break;
+      }
+
+      return thisAmount;
+    }
   }
 
 
@@ -83,34 +106,17 @@ public class Customer {
     var rentals = new ArrayList<>(_rentals);
 
     for(Rental rental :rentals){
-      double thisAmount = 0;
-
-      //determine amounts for rental line
-      switch (rental.tape().movie().priceCode()) {
-        case Movie.REGULAR:
-          thisAmount += 2;
-          if (rental.daysRented() > 2)
-            thisAmount += (rental.daysRented() - 2) * 1.5;
-          break;
-        case Movie.NEW_RELEASE:
-          thisAmount += rental.daysRented() * 3;
-          break;
-        case Movie.CHILDRENS:
-          thisAmount += 1.5;
-          if (rental.daysRented() > 3)
-            thisAmount += (rental.daysRented() - 3) * 1.5;
-          break;
-      }
-
-      totalAmount += thisAmount;
+      double rentalAmount = rental.calculateAmount();
+      totalAmount += rentalAmount;
 
       // add frequent renter points
       frequentRenterPoints++;
+
       // add bonus for a two day new release rental
       if ((rental.tape().movie().priceCode() == Movie.NEW_RELEASE) && rental.daysRented() > 1) frequentRenterPoints++;
 
       //show figures for this rental
-      result += "\t" + rental.tape().movie().name() + "\t" + thisAmount + "\n";
+      result += "\t" + rental.tape().movie().name() + "\t" + rentalAmount + "\n";
 
     }
 
