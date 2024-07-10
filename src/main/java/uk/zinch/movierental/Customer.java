@@ -1,149 +1,173 @@
 package uk.zinch.movierental;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Vector;
-import java.util.function.IntToDoubleFunction;
+
+interface MovieRentalCalculator {
+    Double calculateAmount();
+
+    Integer calculateFrequentRenterPoints();
+}
+
+
+class ChildrenMovieRentalCalculator implements MovieRentalCalculator {
+    private final Customer.Rental rental;
+
+    public ChildrenMovieRentalCalculator(Customer.Rental rental) {
+        this.rental = rental;
+    }
+
+    @Override
+    public Double calculateAmount() {
+        return 1.5 + Math.max((rental.daysRented() - 3.0) * 1.5, 0);
+    }
+
+    @Override
+    public Integer calculateFrequentRenterPoints() {
+        return 1;
+    }
+}
+
+class RegularMovieRentalCalculator implements MovieRentalCalculator {
+    private final Customer.Rental rental;
+
+    public RegularMovieRentalCalculator(Customer.Rental rental) {
+        this.rental = rental;
+    }
+
+    @Override
+    public Double calculateAmount() {
+        return 2.0 + Math.max((rental.daysRented() - 2.0) * 1.5, 0);
+    }
+
+    @Override
+    public Integer calculateFrequentRenterPoints() {
+        return 1;
+    }
+}
+
+class NewReleaseMovieRentalCalculator implements MovieRentalCalculator {
+    private final Customer.Rental rental;
+
+    public NewReleaseMovieRentalCalculator(Customer.Rental rental) {
+        this.rental = rental;
+    }
+
+    @Override
+    public Double calculateAmount() {
+        return rental.daysRented() * 3.0;
+    }
+
+    @Override
+    public Integer calculateFrequentRenterPoints() {
+        var result = 1;
+        if (rental.daysRented() > 1) result++;
+        return result;
+    }
+}
+
 
 public class Customer {
 
-  public static class Tape {
-
-    private String _serialNumber;
-    private Movie _movie;
-
-    public Tape(String serialNumber, Movie movie) {
-      _serialNumber = serialNumber;
-      _movie = movie;
+    public record Tape(String serialNumber, Movie movie) {
     }
 
-    public Movie movie() {
-      return _movie;
+    public record Rental(Tape tape, Integer daysRented) {
+        int priceCode() {
+            return tape.movie.priceCode;
+        }
     }
 
-    public String serialNumber() {
-      return _serialNumber;
-    }
-  }
+    public record Movie(String name, Integer priceCode) {
+        public static final int CHILDRENS = 2;
+        public static final int REGULAR = 0;
+        public static final int NEW_RELEASE = 1;
+
+        enum Type {
+            REGULAR(Movie.REGULAR),
+            CHILDREN(Movie.CHILDRENS),
+            NEW_RELEASE(Movie.NEW_RELEASE);
+
+            private final int legacyCode;
 
 
-  public static class Rental {
+            Type(Integer legacyCode) {
+                this.legacyCode = legacyCode;
+            }
 
-    private Tape _tape;
-    private int _daysRented;
-
-    public Rental(Tape tape, int daysRented) {
-      _tape = tape;
-      _daysRented = daysRented;
-    }
-
-    public int daysRented() {
-      return _daysRented;
-    }
-
-    public Tape tape() {
-      return _tape;
-    }
-
-    private double calculateAmount(){
-      return Movie.Type.of(tape().movie().priceCode()).calculateAmount(daysRented());
-    }
-  }
-
-
-  public static class Movie {
-    public static final int  CHILDRENS = 2;
-    public static final int  REGULAR = 0;
-    public static final int  NEW_RELEASE = 1;
-
-    private enum Type {
-      REGULAR(Movie.REGULAR,  (days) -> days <= 2 ? 2 : 2 + (days - 2) * 1.5),
-      CHILDREN(Movie.CHILDRENS, (days) -> days <= 3 ? 1.5 : 1.5 + (days - 3) * 1.5),
-      NEW_RELEASE(Movie.NEW_RELEASE, (days) -> days * 3);
-
-      private final int legacyCode;
-      private final IntToDoubleFunction amountCalculator;
-
-      Type(int legacyCode, IntToDoubleFunction amountCalculator) {
-        this.legacyCode = legacyCode;
-        this.amountCalculator = amountCalculator;
-      }
-
-      public static Type of(int legacyCode) {
-        return Arrays.stream(values())
-                .filter(type -> type.legacyCode == legacyCode)
-                .findFirst().orElseThrow();
-      }
-
-      public double calculateAmount(int daysRented) {
-        return this.amountCalculator.applyAsDouble(daysRented);
-      }
+            public static Type of(int legacyCode) {
+                return Arrays.stream(values()).filter(type -> type.legacyCode == legacyCode).findFirst().orElseThrow();
+            }
+        }
     }
 
-    private int _priceCode;
-    private String _name;
+    private final String _name;
+    private final Vector<Rental> _rentals = new Vector<>();
 
-    public Movie(String name, int priceCode) {
-      _name = name;
-      _priceCode = priceCode;
+    public Customer(String name) {
+        _name = name;
     }
 
-    public int priceCode() {
-      return _priceCode;
+    public String statement() {
+        var rentals = new ArrayList<>(_rentals);
+
+        String result = writeHeader() + "\n";
+        result += writeStatementBody(rentals);
+        result += writeFooter(getTotalAmount(rentals), getFrequentRenterPoints(rentals));
+        return result;
     }
 
-    public String name() {
-      return _name;
-    }
-  }
-
-
-  private String _name;
-  private Vector<Rental> _rentals = new Vector<>();
-
-  public Customer(String name) {
-    _name = name;
-  }
-
-  public String statement() {
-    double totalAmount = 0;
-    int frequentRenterPoints = 0;
-    String result = prepareHeader() + "\n";
-
-    var rentals = new ArrayList<>(_rentals);
-
-    for(Rental rental :rentals){
-      double rentalAmount = rental.calculateAmount();
-      totalAmount += rentalAmount;
-
-      // add frequent renter points
-      frequentRenterPoints++;
-
-      // add bonus for a two day new release rental
-      if ((rental.tape().movie().priceCode() == Movie.NEW_RELEASE) && rental.daysRented() > 1) frequentRenterPoints++;
-
-      //show figures for this rental
-      result += "\t" + rental.tape().movie().name() + "\t" + rentalAmount + "\n";
-
+    private String writeStatementBody(List<Rental> rentals) {
+        return rentals
+                .stream()
+                .map(rental -> new StringBuilder()
+                        .append("\t")
+                        .append(rental.tape().movie().name())
+                        .append("\t")
+                        .append(createRentalCalculator(rental).calculateAmount())
+                        .append("\n"))
+                .reduce(new StringBuilder(), StringBuilder::append)
+                .toString();
     }
 
-    result += prepareFooter(totalAmount, frequentRenterPoints);
-    return result;
-  }
+    private int getFrequentRenterPoints(List<Rental> rentals) {
+        return rentals
+                .stream()
+                .map(rental -> createRentalCalculator(rental).calculateFrequentRenterPoints())
+                .reduce(0, Integer::sum);
+    }
 
-  private String prepareHeader(){
-    return "Rental Record for " + name();
-  }
+    private double getTotalAmount(List<Rental> rentals) {
+        return rentals
+                .stream()
+                .map(rental -> createRentalCalculator(rental).calculateAmount())
+                .reduce(0.0, Double::sum);
+    }
 
-  private static String prepareFooter(double totalAmount, int frequentRenterPoints) {
-    return "Amount owed is " + totalAmount + "\nYou earned " + frequentRenterPoints + " frequent renter points";
-  }
+    private String writeHeader() {
+        return "Rental Record for " + name();
+    }
+
+    private static String writeFooter(double totalAmount, int frequentRenterPoints) {
+        return "Amount owed is " + totalAmount + "\nYou earned " + frequentRenterPoints + " frequent renter points";
+    }
+
+    private static MovieRentalCalculator createRentalCalculator(Rental rental) {
+        return switch (Movie.Type.of(rental.priceCode())) {
+            case Movie.Type.CHILDREN -> new ChildrenMovieRentalCalculator(rental);
+            case Movie.Type.NEW_RELEASE -> new NewReleaseMovieRentalCalculator(rental);
+            case Movie.Type.REGULAR -> new RegularMovieRentalCalculator(rental);
+        };
+    }
 
 
-  private String name() {
-    return _name;
-  }
+    private String name() {
+        return _name;
+    }
 
-  public void addRental(Rental rental) {
-    _rentals.addElement(rental);
-  }
+    public void addRental(Rental rental) {
+        _rentals.addElement(rental);
+    }
 }
