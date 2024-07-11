@@ -78,6 +78,22 @@ public class Customer {
         int priceCode() {
             return tape.movie.priceCode;
         }
+
+        private MovieRentalCalculator rentalCalculator() {
+            return switch (Movie.Type.of(this.priceCode())) {
+                case Movie.Type.CHILDREN -> new ChildrenMovieRentalCalculator(this);
+                case Movie.Type.NEW_RELEASE -> new NewReleaseMovieRentalCalculator(this);
+                case Movie.Type.REGULAR -> new RegularMovieRentalCalculator(this);
+            };
+        }
+
+        double amount() {
+            return rentalCalculator().calculateAmount();
+        }
+
+        int frequentRenterPoints() {
+            return rentalCalculator().calculateFrequentRenterPoints();
+        }
     }
 
     public record Movie(String name, Integer priceCode) {
@@ -126,7 +142,7 @@ public class Customer {
                         .append("\t")
                         .append(rental.tape().movie().name())
                         .append("\t")
-                        .append(createRentalCalculator(rental).calculateAmount())
+                        .append(rental.amount())
                         .append("\n"))
                 .reduce(new StringBuilder(), StringBuilder::append)
                 .toString();
@@ -135,14 +151,14 @@ public class Customer {
     private int getFrequentRenterPoints(List<Rental> rentals) {
         return rentals
                 .stream()
-                .map(rental -> createRentalCalculator(rental).calculateFrequentRenterPoints())
+                .map(Rental::frequentRenterPoints)
                 .reduce(0, Integer::sum);
     }
 
     private double getTotalAmount(List<Rental> rentals) {
         return rentals
                 .stream()
-                .map(rental -> createRentalCalculator(rental).calculateAmount())
+                .map(Rental::amount)
                 .reduce(0.0, Double::sum);
     }
 
@@ -152,14 +168,6 @@ public class Customer {
 
     private static String writeFooter(double totalAmount, int frequentRenterPoints) {
         return "Amount owed is " + totalAmount + "\nYou earned " + frequentRenterPoints + " frequent renter points";
-    }
-
-    private static MovieRentalCalculator createRentalCalculator(Rental rental) {
-        return switch (Movie.Type.of(rental.priceCode())) {
-            case Movie.Type.CHILDREN -> new ChildrenMovieRentalCalculator(rental);
-            case Movie.Type.NEW_RELEASE -> new NewReleaseMovieRentalCalculator(rental);
-            case Movie.Type.REGULAR -> new RegularMovieRentalCalculator(rental);
-        };
     }
 
 
