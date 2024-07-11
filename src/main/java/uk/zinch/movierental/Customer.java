@@ -6,62 +6,59 @@ import java.util.List;
 import java.util.Vector;
 
 interface MovieRentalCalculator {
-    Double calculateAmount();
+    Double amount(Customer.Rental rental);
 
-    Integer calculateFrequentRenterPoints();
+    Integer frequentRenterPoints(Customer.Rental rental);
+}
+
+enum MovieRentalCalculatorSingleton {
+    CHILDREN(new ChildrenMovieRentalCalculator(), Customer.Movie.Type.CHILDREN),
+    NEW_RELEASE(new NewReleaseMovieRentalCalculator(), Customer.Movie.Type.NEW_RELEASE),
+    REGULAR(new RegularMovieRentalCalculator(), Customer.Movie.Type.REGULAR);
+
+    final MovieRentalCalculator calculator;
+    final Customer.Movie.Type movieType;
+
+    MovieRentalCalculatorSingleton(MovieRentalCalculator calculator, Customer.Movie.Type movieType) {
+        this.calculator = calculator;
+        this.movieType = movieType;
+    }
 }
 
 
 class ChildrenMovieRentalCalculator implements MovieRentalCalculator {
-    private final Customer.Rental rental;
-
-    public ChildrenMovieRentalCalculator(Customer.Rental rental) {
-        this.rental = rental;
-    }
 
     @Override
-    public Double calculateAmount() {
+    public Double amount(Customer.Rental rental) {
         return 1.5 + Math.max((rental.daysRented() - 3.0) * 1.5, 0);
     }
 
     @Override
-    public Integer calculateFrequentRenterPoints() {
+    public Integer frequentRenterPoints(Customer.Rental rental) {
         return 1;
     }
 }
 
 class RegularMovieRentalCalculator implements MovieRentalCalculator {
-    private final Customer.Rental rental;
-
-    public RegularMovieRentalCalculator(Customer.Rental rental) {
-        this.rental = rental;
-    }
-
     @Override
-    public Double calculateAmount() {
+    public Double amount(Customer.Rental rental) {
         return 2.0 + Math.max((rental.daysRented() - 2.0) * 1.5, 0);
     }
 
     @Override
-    public Integer calculateFrequentRenterPoints() {
+    public Integer frequentRenterPoints(Customer.Rental rental) {
         return 1;
     }
 }
 
 class NewReleaseMovieRentalCalculator implements MovieRentalCalculator {
-    private final Customer.Rental rental;
-
-    public NewReleaseMovieRentalCalculator(Customer.Rental rental) {
-        this.rental = rental;
-    }
-
     @Override
-    public Double calculateAmount() {
+    public Double amount(Customer.Rental rental) {
         return rental.daysRented() * 3.0;
     }
 
     @Override
-    public Integer calculateFrequentRenterPoints() {
+    public Integer frequentRenterPoints(Customer.Rental rental) {
         var result = 1;
         if (rental.daysRented() > 1) result++;
         return result;
@@ -75,24 +72,26 @@ public class Customer {
     }
 
     public record Rental(Tape tape, Integer daysRented) {
-        int priceCode() {
+
+        private MovieRentalCalculator calculator() {
+            return Arrays
+                    .stream(MovieRentalCalculatorSingleton.values())
+                    .filter(calculator -> Movie.Type.of(this.priceCode()).equals(calculator.movieType))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("calculator not found"))
+                    .calculator;
+        }
+
+        private int priceCode() {
             return tape.movie.priceCode;
         }
 
-        private MovieRentalCalculator rentalCalculator() {
-            return switch (Movie.Type.of(this.priceCode())) {
-                case Movie.Type.CHILDREN -> new ChildrenMovieRentalCalculator(this);
-                case Movie.Type.NEW_RELEASE -> new NewReleaseMovieRentalCalculator(this);
-                case Movie.Type.REGULAR -> new RegularMovieRentalCalculator(this);
-            };
-        }
-
         double amount() {
-            return rentalCalculator().calculateAmount();
+            return calculator().amount(this);
         }
 
         int frequentRenterPoints() {
-            return rentalCalculator().calculateFrequentRenterPoints();
+            return calculator().frequentRenterPoints(this);
         }
     }
 
